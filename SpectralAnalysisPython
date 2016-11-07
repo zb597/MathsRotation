@@ -1,0 +1,73 @@
+\begin{lstlisting}[language=Python]
+#!/usr/bin/env python3
+
+import sys
+import fileinput
+print(sys.version)
+
+from numpy import*
+from scipy.fftpack import*
+from matplotlib.pyplot import*
+
+
+data=loadtxt("data.txt")                                                            #imports the data form a txt file
+totdat=data.shape[0]                                                                #tells us how many datapoints we have for a given EEG location
+
+x=[[]for index in range(19)]
+
+stepsize=10000
+sampsize=100
+dt=0.002
+
+freqmult=sampsize/(stepsize*dt*2*pi)
+print(freqmult)
+print(freqmult*sampsize)
+
+if (sampsize>stepsize):
+    print("Error samplesize cant be bigger than stepsize")
+    quit()
+z=zeros(sampsize)
+
+for i in range(19):                                                                 #i is the index for the EEG location
+    adelta,atheta,aalpha,abeta,agamma,amu=[],[],[],[],[],[]                         #sets the EEG arrays to emptysets
+    j,jc,aj=0,0,[]                                                                  #j is the the iterator, jc is the counter through the time variable for a given i
+    while j+stepsize < totdat:                                                      #when the counter is less than the time
+        rng=arange(j,j+stepsize,1)                                                  #makes a range of data to add to our 3d array
+        x[i].append(data[rng,i])
+        for k in range(sampsize):                                                   #this loop makes takes a sample of the data from the given step and EEG location
+            z[k]=x[i][jc][round(stepsize*k/sampsize)]
+        y=rfft(z)                                                                   #this fastfouriertransforms the data 
+
+        delta,theta,alpha,beta,gamma,mu=0,0,0,0,0,0                                 #sets the EEG bands to zero
+        for k in range(sampsize):
+            freq=k*freqmult                                                         #sets the frequency of the fft coefficients for a given k
+            if freq<4:                                                              #builds spectrum based on the frequencies
+                delta+=y[k]**2
+            elif freq<8:
+                theta+=y[k]**2
+            elif freq<16:
+                alpha+=y[k]**2
+            elif freq<32:
+                beta+=y[k]**2
+            else:
+                gamma+=y[k]**2
+            if freq>8 and freq<12:
+                mu+=y[k]
+        adelta.append(delta),atheta.append(theta),aalpha.append(alpha),abeta.append(beta),agamma.append(gamma),amu.append(mu),aj.append(j)
+        j+=stepsize
+        jc+=1
+    figure()                                                                        #builds the plots and saves them
+    subplot(2,1,2)
+    plot(data[:,i])
+    xlim=(0,totdat)
+    subplot(2,1,1)
+    plot(aj,agamma, label="gamma")
+    plot(aj,atheta, label="theta")
+    plot(aj,aalpha, label="alpha")
+    plot(aj,abeta, label="beta")
+    plot(aj,agamma, label="gamma")
+    plot(aj,amu, label="mu")
+    xlim=(0,totdat)
+    legend(ncol=3, bbox_to_anchor=(1, 1), bbox_transform=gcf().transFigure)
+    savefig("channel%d.png"%(i))
+\end{lstlisting} 
